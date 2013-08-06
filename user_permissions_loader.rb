@@ -224,19 +224,18 @@ def update_permission(header, row)
     end
 
     # Update Team Membership (Only applicable for Editor Permissions at Project level)
-    if permission_level == $EDITOR then
+    if project_permission_level == $EDITOR then
       @uh.update_team_membership(user, object_id, project_name, team_member)
     else
       @logger.info "  Permission level: #{project_permission_level}, Team Member: #{team_member}. #{$EDITOR} Permission needed to be " + \
          "Team Member. No Team Membership update: N/A."
     end
   end
-
 end
 
 begin
 
-  # Load (and maybe override with) my personal/private variables from a file...
+  # Load (and maybe override with) my personal/private variables from a file...      
   my_vars= File.dirname(__FILE__) + "/my_vars.rb"
   if FileTest.exist?( my_vars ) then require my_vars end
 
