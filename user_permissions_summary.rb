@@ -21,6 +21,19 @@ $my_headers             = $headers
 $my_page_size           = 200
 $my_limit               = 50000
 
+$userslist_filename = ARGV[0]
+
+$input_mode = :allusers
+
+if $userslist_filename != nil
+  if File.exists?(File.dirname(__FILE__) + "/" + $userslist_filename) == false
+    puts "User List file #{$userslist_filename} not found. Exiting."
+    exit
+  else
+    $input_mode = :userslist
+  end  
+end
+
 # Mode options:
 # :standard => Outputs permission attributes only
 # :extended => Outputs enhanced field list including Enabled/Disabled,NetworkID,Role,CostCenter,Department,OfficeLocation
@@ -133,6 +146,11 @@ begin
   my_vars= File.dirname(__FILE__) + "/my_vars.rb"
   if FileTest.exist?( my_vars ) then require my_vars end
 
+  log_file = File.open("user_permissions_summary.log", "a")
+  @logger = Logger.new MultiIO.new(STDOUT, log_file)
+
+  @logger.level = Logger::INFO #DEBUG | INFO | WARNING | FATAL
+
   #==================== Making a connection to Rally ====================
   config                  = {:base_url => $my_base_url}
   config[:username]       = $my_username
@@ -144,6 +162,10 @@ begin
 
   @rally = RallyAPI::RallyRestJson.new(config)
 
+	#Helper Methods
+	puts "Instantiating User Helper..."
+	@uh = UserHelper.new(@rally, @logger, true)
+
   #==================== Querying Rally ==========================
   user_query = RallyAPI::RallyQuery.new()
   user_query.type = :user
@@ -151,23 +173,70 @@ begin
   user_query.page_size = 200 #optional - default is 200
   user_query.limit = 50000 #optional - default is 99999
   user_query.order = "UserName Asc"
-  
-  # Filter for enabled only
-  if $summarize_enabled_only then
-    user_query.query_string = $enabled_only_filter
-    number_found_suffix = "Enabled Users."
-  else
-    number_found_suffix = "Users."
-  end
 
   # Query for users
   puts "Running initial query of users..."
 
-  initial_user_query_results = @rally.find(user_query)
-  n_users = initial_user_query_results.total_result_count
+  if $input_mode == :allusers then
+    # Filter for enabled only
+    if $summarize_enabled_only then
+      user_query.query_string = $enabled_only_filter
+      number_found_suffix = "Enabled Users."
+    else
+      number_found_suffix = "Users."
+    end
+    initial_user_query_results = @rally.find(user_query)
+    n_users = initial_user_query_results.total_result_count
+  elsif $input_mode == :userslist then
+    number_found_suffix = "Users."
+    
+    input  = CSV.read($userslist_filename, {:col_sep => $my_delim })
+
+    header = input.first #ignores first line
+    rows   = []
+    (1...input.size).each { |i| rows << CSV::Row.new(header, input[i]) }
+
+    #row_index = 0
+    these_users = {}
+    rows.each do |row|
+      username_field = row[header[0]]
+      if username_field.nil? then
+        required_field_isnil = true
+        required_nil_fields += "UserName"
+      else
+        username = username_field.strip
+      end
+      
+      if required_field_isnil then
+        @logger.warning "One or more required fields: "
+        @logger.warning required_nil_fields
+        @logger.warning "Is missing! Skipping this row..."
+        return
+      end
+
+      this_user = @uh.find_user(username)
+      #these_users[this_user["UserName"].downcase] = this_user
+      #if row_index == 0
+      #  if rows.length == 1 then
+      #    user_query.query_string = "(UserName = \"#{username}\")"  
+      #  elsif rows.length > 1 then
+      #    user_query.query_string ="((UserName = \"#{username}\")"  
+      #  end   
+      #elsif row_index > 0 && row_index < rows.length - 1 then
+      #  user_query.query_string += " OR (UserName = \"#{username}\")"
+      #else
+      #  user_query.query_string += " OR (UserName = \"#{username}\"))"
+      #end
+      #row_index += 1
+      #puts user_query.query_string
+
+    end
+    n_users = these_users.length
+    initial_user_query_results = @uh.get_cached_users()
+    
+  end
   
   # Summarize number of found users
-  
   puts "Found a total of #{n_users} " + number_found_suffix
   
   # Set a default value for workspace_name
@@ -184,15 +253,6 @@ begin
 	summary_csv = CSV.open($my_output_file, "w", {:col_sep => $my_delim})
 	summary_csv << $output_fields
 	
-	log_file = File.open("user_permissions_loader.log", "a")
-	@logger = Logger.new MultiIO.new(STDOUT, log_file)
-
-	@logger.level = Logger::INFO #DEBUG | INFO | WARNING | FATAL
-	
-	#Helper Methods
-	puts "Instantiating User Helper..."
-	@uh = UserHelper.new(@rally, @logger, true)
-
 	# Note: pre-fetching Workspaces and Projects can help performance
 	# Plus, we pretty much have to do it because later Workspace/Project queries
 	# in UserHelper, that don't come off the Subscription List, will fail
@@ -206,7 +266,14 @@ begin
 	
 	initial_user_query_results.each do | this_user_init |
 		# Setup query parameters for Rally query of detailed user info
-		this_user_name = this_user_init["UserName"]
+		if $input_mode == :allusers then
+      this_user_name = this_user_init["UserName"]
+    elsif $input_mode == :userslist then
+      this_user_name = this_user_init.last["UserName"]
+    end
+    
+		
+		
 		query_string = "(UserName = \"#{this_user_name}\")"
 		user_query.query_string = query_string
 		
