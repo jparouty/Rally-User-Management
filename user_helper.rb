@@ -39,6 +39,14 @@ class UserHelper
     return @cached_users
   end
   
+  def get_cached_workspaces()
+    return @cached_workspaces
+  end
+  
+  def get_cached_projects()
+    return @cached_projects
+  end
+  
   # Helper methods
   # Does the user exist? If so, return the user, if not return nil
   # Need to downcase the name since user names are downcased when created. Without downcase, we would not be
@@ -354,16 +362,14 @@ class UserHelper
     # loop through team memberships to see if User is already a member
     if these_team_memberships != nil then
       these_team_memberships.each do |this_membership|
-
         this_membership_ref = this_membership._ref
         this_membership_oid = this_membership_ref.split("\/")[-1].split("\.")[0]
-
         if this_membership_oid == project_oid then
           is_member = true
         end
       end
     end
-
+    
     url_base = make_team_member_url(this_user_oid, project_oid)
 
     # if User isn't a team member and update value is Yes then make them one
