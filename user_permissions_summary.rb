@@ -196,8 +196,7 @@ begin
     rows   = []
     (1...input.size).each { |i| rows << CSV::Row.new(header, input[i]) }
 
-    #row_index = 0
-    these_users = {}
+    these_users = []
     rows.each do |row|
       username_field = row[header[0]]
       if username_field.nil? then
@@ -215,25 +214,10 @@ begin
       end
 
       this_user = @uh.find_user(username)
-      #these_users[this_user["UserName"].downcase] = this_user
-      #if row_index == 0
-      #  if rows.length == 1 then
-      #    user_query.query_string = "(UserName = \"#{username}\")"  
-      #  elsif rows.length > 1 then
-      #    user_query.query_string ="((UserName = \"#{username}\")"  
-      #  end   
-      #elsif row_index > 0 && row_index < rows.length - 1 then
-      #  user_query.query_string += " OR (UserName = \"#{username}\")"
-      #else
-      #  user_query.query_string += " OR (UserName = \"#{username}\"))"
-      #end
-      #row_index += 1
-      #puts user_query.query_string
-
+      these_users.push(this_user)
     end
-    n_users = these_users.length
-    initial_user_query_results = @uh.get_cached_users()
-    
+    initial_user_query_results = these_users
+    n_users = initial_user_query_results.length
   end
   
   # Summarize number of found users
@@ -266,14 +250,8 @@ begin
 	
 	initial_user_query_results.each do | this_user_init |
 		# Setup query parameters for Rally query of detailed user info
-		if $input_mode == :allusers then
-      this_user_name = this_user_init["UserName"]
-    elsif $input_mode == :userslist then
-      this_user_name = this_user_init.last["UserName"]
-    end
-    
-		
-		
+    this_user_name = this_user_init["UserName"]
+   	
 		query_string = "(UserName = \"#{this_user_name}\")"
 		user_query.query_string = query_string
 		
