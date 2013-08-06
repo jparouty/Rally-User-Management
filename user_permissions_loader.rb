@@ -92,16 +92,17 @@ end
 def update_permission(header, row)
   
   # LastName, FirstName, DisplayName, WorkspaceName are optional fields  
-  username_field               = row[header[0]]
-  last_name_field              = row[header[1]]
-  first_name_field             = row[header[2]]
-  display_name_field           = row[header[3]]
-  permission_type_field        = row[header[4]]
-  workspace_name_field         = row[header[5]]
-  workspace_project_name_field = row[header[6]]
-  permission_level_field       = row[header[7]]
-  team_member_field            = row[header[8]]
-  object_id_field              = row[header[9]]
+  username_field                   = row[header[0]]
+  last_name_field                  = row[header[1]]
+  first_name_field                 = row[header[2]]
+  display_name_field               = row[header[3]]
+  permission_type_field            = row[header[4]]
+  workspace_name_field         	   = row[header[5]]
+  workspace_permission_level_field = row[header[6]]
+  project_name_field               = row[header[7]]
+  project_permission_level_field   = row[header[8]]
+  team_member_field                = row[header[9]]
+  object_id_field                  = row[header[10]]
   
   # Check to see if any required fields are nil
   required_field_isnil = false
@@ -119,17 +120,29 @@ def update_permission(header, row)
   else
     permission_type = permission_type_field.strip
   end
-  if workspace_project_name_field.nil? then
+  if workspace_name_field.nil? then
     required_field_isnil = true
-    required_nil_fields += " Workspace/ProjectName"
+    required_nil_fields += " WorkspaceName"
   else
-    workspace_project_name = workspace_project_name_field.strip
+    workspace_name = workspace_name_field.strip
   end
-  if permission_level_field.nil? then
+  if workspace_permission_level_field.nil? then
     required_field_isnil = true
-    required_nil_fields += " PermissionLevel"
+    required_nil_fields += " WorkspaceRole"
   else
-    permission_level = permission_level_field.strip
+    workspace_permission_level = workspace_permission_level_field.strip
+  end
+  if project_name_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += " ProjectName"
+  else
+    project_name = project_name_field.strip
+  end
+  if project_permission_level_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += " ProjectRole"
+  else
+    project_permission_level = project_permission_level_field.strip
   end
   if team_member_field.nil? then
     required_field_isnil = true
@@ -170,12 +183,6 @@ def update_permission(header, row)
     display_name = "N/A"
   end
   
-  if !workspace_project_name_field.nil? then
-    workspace_project_name = workspace_project_name_field.strip
-  else
-    workspace_project_name = "N/A"
-  end
-
   # look up user
   user = @uh.find_user(username)
 
@@ -199,9 +206,9 @@ def update_permission(header, row)
   if permission_type == "WorkspacePermission"
     workspace = @uh.find_workspace(object_id)
     if workspace != nil then
-      @uh.update_workspace_permissions(workspace, user, permission_level, new_user)
+      @uh.update_workspace_permissions(workspace, user, workspace_permission_level, new_user)
     else
-      @logger.error "Workspace #{workspace_project_name}, OID: #{object_id} not found. Skipping permission grant for this workspace."
+      @logger.error "Workspace #{workspace_name}, OID: #{object_id} not found. Skipping permission grant for this workspace."
     end
   end
 
@@ -211,16 +218,16 @@ def update_permission(header, row)
   if permission_type == "ProjectPermission"
     project = @uh.find_project(object_id)
     if project != nil then
-      @uh.update_project_permissions(project, user, permission_level, new_user)
+      @uh.update_project_permissions(project, user, project_permission_level, new_user)
     else
-      @logger.error "Project #{workspace_project_name}, OID: #{object_id} not found. Skipping permission grant for this project."
+      @logger.error "Project #{project_name}, OID: #{object_id} not found. Skipping permission grant for this project."
     end
 
     # Update Team Membership (Only applicable for Editor Permissions at Project level)
     if permission_level == $EDITOR then
-      @uh.update_team_membership(user, object_id, workspace_project_name, team_member)
+      @uh.update_team_membership(user, object_id, project_name, team_member)
     else
-      @logger.info "  Permission level: #{permission_level}, Team Member: #{team_member}. #{$EDITOR} Permission needed to be " + \
+      @logger.info "  Permission level: #{project_permission_level}, Team Member: #{team_member}. #{$EDITOR} Permission needed to be " + \
          "Team Member. No Team Membership update: N/A."
     end
   end
