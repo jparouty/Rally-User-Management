@@ -241,7 +241,7 @@ begin
 				output_record << this_user.LastName
 				output_record << this_user.FirstName
 				output_record << this_user.DisplayName
-				output_record << "WorkspacePermission"
+				output_record << $type_workspacepermission
 				output_record << this_workspace.Name
 				output_record << workspace_permission_role
 				output_record << $TEAMMEMBER_NA
@@ -329,7 +329,7 @@ begin
 						output_record << this_user.LastName
 						output_record << this_user.FirstName
 						output_record << this_user.DisplayName
-						output_record << "ProjectPermission"
+						output_record << $type_projectpermission
 						output_record << this_workspace.Name
 						output_record << workspace_permission_role
 						output_record << this_project.Name
@@ -346,8 +346,6 @@ begin
 						end
 						summary_csv << output_record
 					end
-				else
-					puts "No open projects in this workspace"
 				end
 			end
 		# User not found in follow-up detail Query - skip this user 
