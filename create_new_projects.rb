@@ -258,8 +258,7 @@ begin
     user_query.page_size = 200 #optional - default is 200
     user_query.limit = 50000 #optional - default is 99999
     user_query.order = "UserName Asc"
-    #user_query.query_string = "(Disabled = \"False\")"
-    user_query.query_string = "(UserName = \"rally.administrators@ni.com\")"
+    user_query.query_string = "(Disabled = \"False\")"
     
     # Query for users
     @logger.info "Running initial query of users..."
