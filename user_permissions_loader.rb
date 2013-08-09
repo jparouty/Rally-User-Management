@@ -288,7 +288,7 @@ def update_disabled(header, row)
   
   # look up user
   user = @uh.find_user(username)
-  @logger.info "#{user.Disabled} #{disabled}"
+  #@logger.info "#{user.Disabled} #{disabled}"
   if user != nil
     if user.Disabled == false && disabled == true then
       @uh.disable_user(user)

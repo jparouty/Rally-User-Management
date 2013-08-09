@@ -46,8 +46,8 @@ $NOACCESS = 'No Access'
 $TEAMMEMBER_YES = 'Yes'
 $TEAMMEMBER_NO = 'No'
 $TEAMMEMBER_NA = 'N/A'
-$DISABLED_YES = "True"
-$DISABLED_NO = "False"
+$DISABLED_YES = 'TRUE'
+$DISABLED_NO = 'FALSE'
 
 # symbols
 :type_workspace
