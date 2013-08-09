@@ -83,7 +83,7 @@ begin
   log_file = File.open("create_new_projects.log", "a")
   @logger = Logger.new MultiIO.new(STDOUT, log_file)
 
-  @logger.level = Logger::INFO #DEBUG | INFO | WARNING | FATAL
+  @logger.level = Logger::INFO #DEBUG | INFO | WARN | FATAL
 
   #==================== Making a connection to Rally ====================
   config                  = {:base_url => $my_base_url}
@@ -118,6 +118,10 @@ begin
     parentoid_field = row[header[4]]
     owneruid_field = row[header[5]]
     
+    # Check to see if any required fields are nil
+    required_field_isnil = false
+    required_nil_fields = ""
+  
     if projectname_field.nil? then
       required_field_isnil = true
       required_nil_fields += "ProjectName"
@@ -140,10 +144,10 @@ begin
     end
   
     if required_field_isnil then
-      @logger.warning "One or more required fields: "
-      @logger.warning required_nil_fields
-      @logger.warning "Is missing! Skipping this row..."
-      return
+      @logger.warn "One or more required fields: "
+      @logger.warn required_nil_fields
+      @logger.warn "is missing! Skipping this row..."
+      next
     end
     
     # Filter for possible nil values in optional fields
@@ -160,7 +164,7 @@ begin
     end
 
     if parentoid != "N/A" && parentname == "N/A" then
-      @logger.error "Rally Project: #{parentname} #{parentoid} mismatch"
+      @logger.warn "Rally Project: #{parentname} #{parentoid} mismatch"
       next
     end
 
@@ -290,8 +294,10 @@ begin
         end
       end
     end
-    
   end
+  
+  log_file.close
+  
 rescue => ex
   @logger.error ex
   @logger.error ex.backtrace

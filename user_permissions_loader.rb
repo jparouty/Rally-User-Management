@@ -69,6 +69,8 @@ $VIEWER = 'Viewer'
 $NOACCESS = 'No Access'
 $TEAMMEMBER_YES = 'Yes'
 $TEAMMEMBER_NO = 'No'
+$DISABLED_TRUE = 'TRUE'
+$DISABLED_FALSE = 'FALSE'
 
 #Setup constants
 $workspace_permission_type          = "WorkspacePermission"
@@ -96,13 +98,14 @@ def update_permission(header, row)
   last_name_field                  = row[header[1]]
   first_name_field                 = row[header[2]]
   display_name_field               = row[header[3]]
-  permission_type_field            = row[header[4]]
-  workspace_name_field         	   = row[header[5]]
-  workspace_permission_level_field = row[header[6]]
-  project_name_field               = row[header[7]]
-  project_permission_level_field   = row[header[8]]
-  team_member_field                = row[header[9]]
-  object_id_field                  = row[header[10]]
+  disabled_field                   = row[header[4]]
+  permission_type_field            = row[header[5]]
+  workspace_name_field         	   = row[header[6]]
+  workspace_permission_level_field = row[header[7]]
+  project_name_field               = row[header[8]]
+  project_permission_level_field   = row[header[9]]
+  team_member_field                = row[header[10]]
+  object_id_field                  = row[header[11]]
   
   # Check to see if any required fields are nil
   required_field_isnil = false
@@ -158,9 +161,9 @@ def update_permission(header, row)
   end
   
   if required_field_isnil then
-    @logger.warning "One or more required fields: "
-    @logger.warning required_nil_fields
-    @logger.warning "Is missing! Skipping this row..."
+    @logger.warn "One or more required fields: "
+    @logger.warn required_nil_fields
+    @logger.warn "Is missing! Skipping this row..."
     return
   end
   
@@ -233,6 +236,70 @@ def update_permission(header, row)
   end
 end
 
+def update_disabled(header, row)
+  
+  # LastName, FirstName, DisplayName, WorkspaceName are optional fields  
+  username_field                   = row[header[0]]
+  last_name_field                  = row[header[1]]
+  first_name_field                 = row[header[2]]
+  display_name_field               = row[header[3]]
+  disabled_field                   = row[header[4]]
+  permission_type_field            = row[header[5]]
+  workspace_name_field         	   = row[header[6]]
+  workspace_permission_level_field = row[header[7]]
+  project_name_field               = row[header[8]]
+  project_permission_level_field   = row[header[9]]
+  team_member_field                = row[header[10]]
+  object_id_field                  = row[header[11]]
+  
+  # Check to see if any required fields are nil
+  required_field_isnil = false
+  required_nil_fields = ""
+  
+  if username_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += "UserName"
+  else
+    username = username_field.strip
+  end
+  if disabled_field.nil? then
+    required_field_isnil = true
+    required_nil_fields += "Disabled"
+  end
+  
+  if required_field_isnil then
+    @logger.warn "One or more required fields: "
+    @logger.warn required_nil_fields
+    @logger.warn "Is missing! Skipping this row..."
+    return
+  end
+
+  if disabled_field.strip != $DISABLED_TRUE && disabled_field.strip != $DISABLED_FALSE
+    @logger.warn "Invalid value for Disabled field: #{disabled_field.strip}"
+    @logger.warn "Skipping this row..."
+    return
+  else
+    if disabled_field.strip == $DISABLED_TRUE then
+      disabled = true
+    else
+      disabled = false
+    end  
+  end
+  
+  # look up user
+  user = @uh.find_user(username)
+  @logger.info "#{user.Disabled} #{disabled}"
+  if user != nil
+    if user.Disabled == false && disabled == true then
+      @uh.disable_user(user)
+    elsif user.Disabled == true && disabled == false then
+      @uh.enable_user(user)
+    end
+  else
+    @logger.info "Cannot find user #{username}..."
+  end
+end
+
 begin
 
   # Load (and maybe override with) my personal/private variables from a file...      
@@ -281,6 +348,7 @@ begin
 
   rows.each do |row|
     update_permission(header, row)
+    update_disabled(header, row)
   end
 
   log_file.close

@@ -30,8 +30,8 @@ class UserHelper
     @enabled_only_filter = "(Disabled = \"False\")"
     
     # fetch data
-    @initial_user_fetch            = "UserName,FirstName,LastName,DisplayName"
-    @detail_user_fetch             = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
+    @initial_user_fetch            = "UserName,FirstName,LastName,DisplayName,Disabled"
+    @detail_user_fetch             = "UserName,FirstName,LastName,DisplayName,Disabled,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
 
   end
 
@@ -317,13 +317,12 @@ class UserHelper
   end
 
   def disable_user(user)
-    if user.Disabled == 'False'
+    if user.Disabled ==  false
       if @create_flag
         fields = {}
-        fields["Disabled"] = 'False'
+        fields["Disabled"] =  'True'
         updated_user = @rally.update(:user, user._ref, fields) #by ref
       end
-      
       @logger.info "#{user.UserName} disabled in Rally"
     else
       @logger.info "#{user.UserName} already disabled from Rally"
@@ -333,9 +332,9 @@ class UserHelper
   end
   
   def enable_user(user)
-    if user.Disabled == 'True'
+    if user.Disabled ==  true
       fields = {}
-      fields["Disabled"] = 'True'
+      fields["Disabled"] =  'False'
       updated_user = @rally.update(:user, user._ref, fields) if @create_flag
       @logger.info "#{user.UserName} enabled in Rally"
       return true
@@ -345,11 +344,35 @@ class UserHelper
     end
   end
 
+  def is_team_member?(user, project_oid)
+    # Default values
+    is_member = false
+    return_value = "No"
+  
+    # First check if team_memberships are nil then loop through and look for a match on
+    # Project OID
+    if user.TeamMemberships != nil then
+  
+      user.TeamMemberships.each do |this_membership|
+        this_membership_ref = this_membership._ref
+  
+        # Grab the Project OID off of the ref URL
+        this_membership_oid = this_membership_ref.split("\/")[-1].split("\.")[0]
+  
+        if this_membership_oid == project_oid then
+          is_member = true
+        end
+      end
+    end
+  
+    if is_member then return_value = "Yes" end
+    return return_value
+  end
+
   # Updates team membership. Note - this utilizes un-documented and un-supported Rally endpoint
   # that is not part of WSAPI REST
   # it also digs down into rally_api to directly PUT against this endpoint
   # not guaranteed to work forever
-
   def update_team_membership(user, project_oid, project_name, team_member_setting)
 
     # look up user

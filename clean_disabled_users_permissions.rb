@@ -58,32 +58,6 @@ def strip_role_from_permission(str)
   str.gsub(/\bAdmin|\bUser|\bEditor|\bViewer/,"").strip
 end
 
-def is_team_member(project_oid, team_memberships)
-
-  # Default values
-  is_member = false
-  return_value = "No"
-
-  # First check if team_memberships are nil then loop through and look for a match on
-  # Project OID
-  if team_memberships != nil then
-
-    team_memberships.each do |this_membership|
-      this_membership_ref = this_membership._ref
-
-      # Grab the Project OID off of the ref URL
-      this_membership_oid = this_membership_ref.split("\/")[-1].split("\.")[0]
-
-      if this_membership_oid == project_oid then
-        is_member = true
-      end
-    end
-  end
-
-  if is_member then return_value = "Yes" end
-  return return_value
-end
-
 begin
   # Load (and maybe override with) my personal/private variables from a file...
   my_vars= File.dirname(__FILE__) + "/my_vars.rb"
@@ -101,7 +75,7 @@ begin
   config[:version]        = $wsapi_version
   config[:headers]        = $my_headers #from RallyAPI::CustomHttpHeader.new()
 
-  puts "Connecting to Rally: #{$my_base_url} as #{$my_username}..."
+  @logger.info "Connecting to Rally: #{$my_base_url} as #{$my_username}..."
 
   @rally = RallyAPI::RallyRestJson.new(config)
 
@@ -113,20 +87,20 @@ begin
   user_query.limit = 50000 #optional - default is 99999
   user_query.order = "UserName Asc"
   user_query.query_string = "(Disabled = \"True\")"
+
+  #Helper Methods
+	@logger.info "Instantiating User Helper..."
+	@uh = UserHelper.new(@rally, @logger, true)
   
   # Query for users
-  puts "Running initial query of users..."
+  @logger.info "Running initial query of users..."
 
   initial_user_query_results = @rally.find(user_query)
   n_users = initial_user_query_results.total_result_count
   
   # Summarize number of found users
   
-  puts "Found a total of #{n_users} Disabled Users"
-  
-  #Helper Methods
-	puts "Instantiating User Helper..."
-	@uh = UserHelper.new(@rally, @logger, true)
+  @logger.info "Found a total of #{n_users} Disabled Users"
   
 	count = 1
 	notify_increment = 10
@@ -151,11 +125,11 @@ begin
 			
 			# Summarize where we are in processing
 			notify_remainder=count%notify_increment
-			if notify_remainder==0 then puts "Processed #{count} of #{n_users} Disabled Users" end
+			if notify_remainder==0 then @logger.info "Processed #{count} of #{n_users} Disabled Users" end
 			count+=1
 			
 			user_permissions = this_user.UserPermissions
-			puts "#{this_user} has #{user_permissions.length} permissions"
+			@logger.info "#{this_user} has #{user_permissions.length} permissions"
       user_permissions.each do | this_permission |
         # Set default for team membership
         team_member = "No"
@@ -188,7 +162,7 @@ begin
           
           # Determine if user is a team member on this project
           these_team_memberships = this_user["TeamMemberships"]
-          team_member = is_team_member(object_id_string, these_team_memberships)
+          team_member = @uh.is_team_member?(this_user, object_id_string)
           
           if team_member == $TEAMMEMBER_YES
             @uh.update_team_membership(this_user, object_id_string, project.Name, $TEAMMEMBER_NO)
@@ -199,4 +173,10 @@ begin
       end  
 		end	
   end
+  
+  log_file.close
+  
+rescue Exception => ex
+  puts ex.backtrace
+  puts ex.message  
 end

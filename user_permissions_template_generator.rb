@@ -35,7 +35,7 @@ if File.exists?(File.dirname(__FILE__) + "/" + $user_list_filename) == false
   exit
 end
 
-$template_output_fields          =  %w{UserID LastName FirstName DisplayName Type Workspace WorkspaceOrProjectName Role TeamMember ObjectID}
+$template_output_fields          =  %w{UserID LastName FirstName DisplayName Disabled Type WorkspaceName WorkspaceRole ProjectName ProjectRole TeamMember ObjectID}
 
 #Setup role constants
 $ADMIN = 'Admin'
@@ -46,6 +46,8 @@ $NOACCESS = 'No Access'
 $TEAMMEMBER_YES = 'Yes'
 $TEAMMEMBER_NO = 'No'
 $TEAMMEMBER_NA = 'N/A'
+$DISABLED_YES = "True"
+$DISABLED_NO = "False"
 
 # symbols
 :type_workspace
@@ -89,25 +91,25 @@ def prep_record_for_export(input_record, type, input_user)
   last_name_sample            = input_user["LastName"]
   first_name_sample           = input_user["FirstName"]
   display_name_sample         = input_user["DisplayName"]
-  workspace_or_project_name   = input_record["Name"]
+  disabled_sample             = $DISABLED_NO
   workspace_role_sample       = $USER
-  project_role_sample         = $EDITOR
+  project_role_sample         = $VIEWER
 
   if type == :type_workspace
     permission_type = "WorkspacePermission"
     # Below is needed in order to _repeat_ workspace name in output
-    workspace_name = workspace_or_project_name
-    role_sample = workspace_role_sample
-    team_member_sample          = $TEAMMEMBER_NA
+    workspace_name = input_record["Name"]
+    project_name = "N/A"
+    project_role = "N/A"
+    team_member  = $TEAMMEMBER_NA
   end
   if type == :type_project
     permission_type = "ProjectPermission"
-
-    this_project = input_record
     this_workspace = input_record["Workspace"]
     workspace_name = this_workspace["Name"]
-    role_sample = project_role_sample
-    team_member_sample = $TEAMMEMBER_YES
+    project_name = input_record["Name"]
+    project_role = project_role_sample
+    team_member  = $TEAMMEMBER_NO
   end
 
   object_id = input_record["ObjectID"]
@@ -117,11 +119,13 @@ def prep_record_for_export(input_record, type, input_user)
   output_data << last_name_sample
   output_data << first_name_sample
   output_data << display_name_sample
+  output_data << disabled_sample
   output_data << permission_type
   output_data << workspace_name
-  output_data << workspace_or_project_name
-  output_data << role_sample
-  output_data << team_member_sample
+  output_data << workspace_role_sample
+  output_data << project_name
+  output_data << project_role
+  output_data << team_member
   output_data << object_id
 
   return(output_data)
