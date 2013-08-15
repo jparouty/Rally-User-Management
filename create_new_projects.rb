@@ -278,6 +278,7 @@ begin
     initial_user_query_results.each do | this_user_init |
       # Query Rally for single-user detailed info, including Permissions, Projects, and
       # Team Memberships
+      user_query.query_string = "(UserName = \"" + this_user_init.UserName + "\")"
       detail_user_query_results = @rally.find(user_query)
     
       number_found = detail_user_query_results.total_result_count
@@ -286,7 +287,7 @@ begin
         
         # Summarize where we are in processing
         notify_remainder=count%notify_increment
-        if notify_remainder==0 then @logger.info "Processed #{count} of #{n_users} " + number_found_suffix end
+        if notify_remainder==0 then @logger.info "Processed #{count} of #{n_users} Enabled Users" end
         count+=1
         
         if this_user.UserPermissions.include?("#{workspacename} #{$USER}") == true then
