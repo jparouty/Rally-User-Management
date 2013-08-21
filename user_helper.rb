@@ -304,7 +304,7 @@ class UserHelper
     # Grab full object of the created user and return so that we can use it later
     new_user_query = RallyAPI::RallyQuery.new()
     new_user_query.type = :user
-    new_user_query.fetch = "UserName,FirstName,LastName,DisplayName,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
+    new_user_query.fetch = "UserName,FirstName,LastName,DisplayName,Disabled,UserPermissions,Name,Role,Workspace,ObjectID,Project,ObjectID,TeamMemberships"
     new_user_query.query_string = "(UserName = \"#{user_name.downcase}\")"
     new_user_query.order = "UserName Asc"
 
@@ -320,8 +320,9 @@ class UserHelper
     if user.Disabled ==  false
       if @create_flag
         fields = {}
-        fields["Disabled"] =  'True'
+        fields["Disabled"] = 'True'
         updated_user = @rally.update(:user, user._ref, fields) #by ref
+        @cached_users[user["UserName"].downcase]["Disabled"] = updated_user["Disabled"]
       end
       @logger.info "#{user.UserName} disabled in Rally"
     else
@@ -334,8 +335,9 @@ class UserHelper
   def enable_user(user)
     if user.Disabled ==  true
       fields = {}
-      fields["Disabled"] =  'False'
-      updated_user = @rally.update(:user, user._ref, fields) if @create_flag
+      fields["Disabled"] = 'False'
+      updated_user = @rally.update(:user, user._ref, fields)
+      @cached_users[user["UserName"].downcase]["Disabled"] = updated_user["Disabled"]
       @logger.info "#{user.UserName} enabled in Rally"
       return true
     else
